@@ -1,0 +1,39 @@
+#! /bin/sh
+### BEGIN INIT INFO
+# Provides:          surveyServer 
+# Required-Start:    
+# Required-Stop:
+# Should-Start:      
+# Should-Stop:       
+# X-Stop-After:      
+# Default-Start:
+# Default-Stop:      
+# Short-Description: Sets up survey server daemons
+# Description:       periodically checks external IP and
+#                    securely uploads it to a dropbox.
+#            
+### END INIT INFO
+
+# Author: Joshua Weaver <joshua.l.weaver@navy.mil>
+
+
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+NAME=surveyServer
+SCRIPTNAME=/etc/init.d/${NAME}
+
+# Read configuration variable file if it is present
+[ -r /etc/$NAME.conf ] && . /etc/$NAME.conf
+
+
+#ensure file exists and is writable
+#touch $logLocation$logFile
+
+
+# find IP address
+EXTIPADDRESS1=$(curl -s checkip.dyndns.org|sed -e 's/.*Current IP Address: //' -e 's/<.*$//')
+EXTIPADDRESS2=$(dig +short myip.opendns.com @resolver1.opendns.com)
+
+
+
+exit 0
+

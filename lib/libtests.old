@@ -1,0 +1,128 @@
+
+
+
+updateFileNameVariables ()
+{
+FILENAME1=$SITENAME"_data/"$SITENAME"_"$CARRIERNAME"_"$TESTTYPE
+}
+
+
+
+
+updateStatusVariables ()
+{
+TESTSREMAINING=$(awk "BEGIN {printf \"%.0f\",($TESTSREMAINING-$DEC)}")
+PERCENTDONE=$(awk "BEGIN {printf \"%.2f\",100*($NUMTESTS-$TESTSREMAINING)/${NUMTESTS}}")
+}
+
+
+updatestatus ()
+{
+clear
+echo "Running network characterization tests at "$SITENAME" on the "$CARRIERNAME" network:"
+echo
+echo -n "Running "$TESTDURATION"-second ICMP ping test to "$PINGADDRESS"..."
+let i=18-$PINGIPLENGTH
+while [ $i -gt 0 ]
+do
+echo -n "."
+let i=$i-1
+done
+echo $PINGTESTSTATUS
+echo "Running "$TESTDURATION"-second  56-KByte TCP test in each direction..."$TCP56STATUS
+echo "Running "$TESTDURATION"-second 128-KByte TCP test in each direction..."$TCP128STATUS
+echo "Running "$TESTDURATION"-second 256-KByte TCP test in each direction..."$TCP256STATUS
+echo "Running "$TESTDURATION"-second 512-KByte TCP test in each direction..."$TCP512STATUS
+echo "Running "$TESTDURATION"-second  128-Kbps UDP test in each direction..."$UDP128KSTATUS
+echo "Running "$TESTDURATION"-second  512-Kbps UDP test in each direction..."$UDP512KSTATUS
+echo "Running "$TESTDURATION"-second    1-Mbps UDP test in each direction..."$UDP1MSTATUS
+echo "Running "$TESTDURATION"-second    3-Mbps UDP test in each direction..."$UDP3MSTATUS
+echo "Running "$TESTDURATION"-second    5-Mbps UDP test in each direction..."$UDP5MSTATUS
+echo "Running "$TESTDURATION"-second   10-Mbps UDP test in each direction..."$UDP10MSTATUS
+echo
+echo
+SECONDSREMAINING=$(($TESTSREMAINING*$TESTDURATION))
+echo "#####################################################################"
+echo "#                                                                   #"
+echo -n "#   Total complete: "$PERCENTDONE"%"
+let n=${#PERCENTDONE}
+let i=8-$n
+while [ $i -gt 0 ]
+do
+echo -n " "
+let i=$i-1
+done
+echo -n "Estimated Time Remaining: "$SECONDSREMAINING" seconds"
+let i=5-${#SECONDSREMAINING}
+while [ $i -gt 0 ]
+do
+echo -n " "
+let i=$i-1
+done
+echo "#"
+echo "#                                                                   #"
+echo "#####################################################################"
+echo
+echo 
+echo
+sleep 3
+}
+
+
+
+#######################################################################################
+# Define Tests
+#
+
+# Ping Test
+pingtest ()
+{
+TESTTYPE="ping_test"
+DEC=1
+let TOTALLINES=$PINGCOUNT+5
+updateFileNameVariables
+
+clear
+PINGCOUNT=$(awk "BEGIN {printf \"%.0f\",${TESTDURATION}/${PINGINTERVAL}}")
+echo "1st Ping Test Status"
+ping $PINGADDRESS -i $PINGINTERVAL -c $PINGCOUNT -D -v | pv -l -s $TOTALLINES > testdata
+echo ""
+echo ""
+echo "2nd ping test status"
+let PINGCOUNT=$PINGCOUNT*2
+let TOTALLINES=$PINGCOUNT+5
+ping $PINGADDRESS -i $PINGINTERVAL -c $PINGCOUNT -D -v | pv -l -s $TOTALLINES > testdata2
+
+
+exit 0
+
+
+#ping $PINGADDRESS -i $PINGINTERVAL -c $PINGCOUNT -D -v > $FILENAME1$FILENAME2".temp"
+mv $FILENAME1$FILENAME2".temp" $FILENAME1$FILENAME2".log"
+}
+
+# TCP iPerf Test
+tcpiperftest ()
+{
+DEC=2
+TESTTYPE="iPerf_TCP_test"
+FILENAME2="_"$TCPWINDOW"Byte"
+updateFileNameVariables
+echo "Running "$TCPWINDOW"Byte TCP-window test now"
+iperf -c $IPERFSERVER -P $TCPPARSTREAMS -i $REPORTINTERVAL -p $TCPPORT -L $TCPPORT -w $TCPWINDOW -f $REPFORMAT -t $TESTDURATION -r > $FILENAME1$FILENAME2".temp"
+mv $FILENAME1$FILENAME2".temp" $FILENAME1$FILENAME2".log"
+}
+
+# UDP iPerf Test
+udpiperftest ()
+{
+DEC=2
+TESTTYPE="iPerf_UDP_test"
+FILENAME2="_"$UDPBANDWIDTH"bps"
+updateFileNameVariables
+echo "Running "$FILENAME2" UDP test now..."
+iperf -c $IPERFSERVER -u -r -P $UDPPARSTREAMS -i $REPORTINTERVAL -p $UDPPORT -L $UDPPORT -f $REPFORMAT -b $UDPBANDWIDTH -t $TESTDURATION > $FILENAME1$FILENAME2".temp"
+mv $FILENAME1$FILENAME2".temp" $FILENAME1$FILENAME2".log"
+}
+#
+#######################################################################################

@@ -1,0 +1,46 @@
+#! /bin/sh
+### BEGIN INIT INFO
+# Provides:          iperfServer 
+# Required-Start:    
+# Required-Stop:
+# Should-Start:      
+# Should-Stop:       
+# X-Stop-After:      
+# Default-Start:
+# Default-Stop:      
+# Short-Description: Starts TCP & UDP iperf Servers
+# Description:       Starts TCP & UDP  iperf servers using /etc/iperfServer.conf
+#		     as the settings file.
+### END INIT INFO
+
+# Author: Joshua Weaver <joshua.l.weaver@navy.mil>
+#
+
+
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+NAME=iperfServer
+SCRIPTNAME=/etc/init.d/${NAME}
+
+# Read configuration variable file if it is present
+[ -r /etc/$NAME.conf ] && . /etc/$NAME.conf
+
+
+#ensure file exists and is writable
+echo "test TCP file"
+echo $logLocation
+echo $TCPlogFile
+echo $logLocation$TCPlogFile
+touch $logLocation$TCPlogFile
+
+echo "test UDP file"
+
+touch $logLocation$UDPlogFile
+
+#Start TCP iperf server on selected port
+iperf -s -D -p $TCPport -i $TCPreportingInterval >> $logLocation$TCPlogFile
+
+#Start UDP iperf server on selected port
+iperf -s -u -D -p $UDPport -i $UDPreportingInterval >> $logLocation$UDPlogFile
+
+
+exit 0

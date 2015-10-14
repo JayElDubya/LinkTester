@@ -1,0 +1,17 @@
+Reverse (server to client) iperf test using 128kByte TCP frame-size.
+
+command used:
+iperf3 -cr 127.0.0.1 -P 1 -i 1 -O 2 -p 5001 -M 128k -f k -t 5
+
+----------------------------------------------------------------------------
+Connecting to host 127.0.0.1, port 5001
+[  4] local 127.0.0.1 port 37848 connected to 127.0.0.1 port 5001
+[ ID] Interval           Transfer     Bandwidth       Retr  Cwnd
+[  4]   0.00-5.00   sec  15.9 GBytes  27236746 Kbits/sec  3378    110 KBytes       
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bandwidth       Retr
+[  4]   0.00-5.00   sec  15.9 GBytes  27236747 Kbits/sec  3378             sender
+[  4]   0.00-5.00   sec  15.9 GBytes  27231788 Kbits/sec                  receiver
+
+iperf Done.
+----------------------------------------------------------------------------

@@ -1,0 +1,161 @@
+#load config
+loadconfig () {
+    configfile='./configs/client_config.conf'
+    configfile_secured='/tmp/cleaned_client_config.conf'
+
+    if egrep -q -v '^#|^[^ ]*=[^;]*' "$configfile"; then
+      echo "Config file is unclean, cleaning it..." >&2
+      # filter the original to a new file
+      egrep '^#|^[^ ]*=[^;&]*'  "$configfile" > "$configfile_secured"
+      configfile="$configfile_secured"
+    fi
+
+    echo $configfile
+    source $configfile
+
+    echo $TESTDURATION
+}
+
+#load iperf3 libraries
+loadiperflibs () {
+    LD_LIBRARY_PATH=/usr/local/lib
+    LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib/libiperf.so.0
+    export LD_LIBRARY_PATH
+}
+
+
+mainmenu () {
+    clear
+    echo -n "Please enter the site name: "
+    read SITENAME
+    echo
+    echo "chooses tests or quit: 
+    "
+    PS3='
+    Please enter your choice: '
+    options=("Perform All Tests" "Quit")
+    select opt in "${options[@]}"
+    do
+        case $opt in
+            "Perform All Tests")
+                #performalltests ()
+                break
+                ;;
+            "Quit")
+                clear
+                exit 0
+                ;;
+            *) echo invalid option;;
+        esac
+    done
+}
+
+
+#######################################################################################
+# Define Tests
+#
+
+# Ping Test
+pingtest () {
+    TESTTYPE="ping_test"
+
+    #echo "Running "$TESTDURATION"-second ICMP ping test to "$PINGADDRESS"..."
+
+    PINGCOUNT=$(awk "BEGIN {printf \"%.0f\",${TESTDURATION}/${PINGINTERVAL}}")
+    updateFileNameVariables
+    FILENAME2=""
+
+    #ping $PINGADDRESS -i $PINGINTERVAL -c $PINGCOUNT -D -v | tee $FILENAME1$FILENAME2".temp" | grep --line-buffered "\[" | pv -N "Running 1st ping test" -cepls $PINGCOUNT 
+    ping $PINGADDRESS -i $PINGINTERVAL -c $PINGCOUNT -D -v >> $FILENAME1$FILENAME2".temp"
+    mv $FILENAME1$FILENAME2".temp" $FILENAME1$FILENAME2".log"
+    echo "Ping testing complete."
+    #ping 8.8.8.8 -i $PINGINTERVAL -c $PINGCOUNT -D -v | tee testdata2 | grep --line-buffered "\[" | pv -N "Running 2nd ping test" -cepls $PINGCOUNT
+}
+
+
+performalltests () {
+    pingtest
+}
+
+
+updateFileNameVariables () {
+    DIR="./data/"$SITENAME"_data_"$TESTTIME
+    FILENAME1=$DIR"/"$SITENAME"_"$TESTTYPE
+}
+
+
+timestamp() {
+    date +"%Y%m%d_%H:%M:%S"
+}
+
+
+tcpiperftest () {
+    TESTTYPE="iPerf_TCP_test"
+    updateFileNameVariables
+    LINECOUNT=$(awk "BEGIN {printf \"%.0f\",${TESTDURATION}/${FRAMEINTERVAL}}")
+
+    
+    for TCPFRAMESIZE do
+        #echo "Running "$TCPFRAMESIZE"Byte TCP frame-size test now."
+        FILENAME2="_"$TCPFRAMESIZE"Byte_client->server"
+        echo "Client to server iperf test using "$TCPFRAMESIZE"Byte TCP frame-size." >> $FILENAME1$FILENAME2".temp"
+        echo "" >> $FILENAME1$FILENAME2".temp"
+        echo "command used:" >> $FILENAME1$FILENAME2".temp"
+	echo "iperf3 -c "$IPERFSERVER" -P "$TCPPARSTREAMS" -i "$FRAMEINTERVAL" -O "$OMITSECONDS" -p "$TCPPORT" -M "$TCPFRAMESIZE" -f "$REPFORMAT" -t "$TESTDURATION >> $FILENAME1$FILENAME2".temp"
+	echo "" >> $FILENAME1$FILENAME2".temp"
+	echo "----------------------------------------------------------------------------" >> $FILENAME1$FILENAME2".temp"
+
+        iperf3 -c $IPERFSERVER -P $TCPPARSTREAMS -i $REPORTINTERVAL -O $OMITSECONDS -p $TCPPORT -M $TCPFRAMESIZE -f $REPFORMAT -t $TESTDURATION >> $FILENAME1$FILENAME2".temp"
+		
+	echo "----------------------------------------------------------------------------" >> $FILENAME1$FILENAME2".temp"
+        mv $FILENAME1$FILENAME2".temp" $FILENAME1$FILENAME2".log"
+  	echo $TCPFRAMESIZE"Byte iperf test complete."
+        sleep 5
+
+
+        FILENAME2="_"$TCPFRAMESIZE"Byte_server->client"
+        echo "Reverse (server to client) iperf test using "$TCPFRAMESIZE"Byte TCP frame-size." >> $FILENAME1$FILENAME2".temp"
+        echo "" >> $FILENAME1$FILENAME2".temp"
+        echo "command used:" >> $FILENAME1$FILENAME2".temp"
+	echo "iperf3 -cr "$IPERFSERVER" -P "$TCPPARSTREAMS" -i "$FRAMEINTERVAL" -O "$OMITSECONDS" -p "$TCPPORT" -M "$TCPFRAMESIZE" -f "$REPFORMAT" -t "$TESTDURATION >> $FILENAME1$FILENAME2".temp"
+	echo "" >> $FILENAME1$FILENAME2".temp"
+	echo "----------------------------------------------------------------------------" >> $FILENAME1$FILENAME2".temp"
+
+        iperf3 -c $IPERFSERVER -P $TCPPARSTREAMS -i $REPORTINTERVAL -O $OMITSECONDS -p $TCPPORT -M $TCPFRAMESIZE -f $REPFORMAT -t $TESTDURATION >> $FILENAME1$FILENAME2".temp"
+		
+	echo "----------------------------------------------------------------------------" >> $FILENAME1$FILENAME2".temp"
+        mv $FILENAME1$FILENAME2".temp" $FILENAME1$FILENAME2".log"
+  	echo $TCPFRAMESIZE"Byte iperf test complete."
+        sleep 5
+        
+    done
+    
+
+}
+
+
+speedtestdotnet () {
+    if [[ "$SPEEDTESTDOTNETENABLED" == True ]] ; then
+        TESTTYPE="speedtest.net_test"
+        updateFileNameVariables
+        test $SPEEDTESTDOTNETSECURED = "True" && ARGS=$ARGS" --secure"
+        test $SPEEDTESTDOTNETSERVER && ARGS=$ARGS" --server "$SPEEDTESTDOTNETSERVER	
+        test $SPEEDTESTDOTNETGETIMG = "True" && ARGS=$ARGS" --share"
+	test $SPEEDTESTDOTNETTIMEOUT && ARGS=$ARGS" --timeout "$SPEEDTESTDOTNETTIMEOUT
+
+	speedtest-cli $ARGS > $FILENAME1".temp"
+        mv $FILENAME1".temp" $FILENAME1".log"
+
+        if [[ "$SPEEDTESTDOTNETGETIMG" == True ]] ; then
+            wget -q --directory-prefix $DIR $(grep -o 'http[^ ]*' $FILENAME1".log")
+        fi 
+
+	echo "Speedtest.net testing complete."
+
+    fi
+    
+#    speedtest-cli --share $1 $2 >> $FILENAME1".temp"
+
+
+}
+
